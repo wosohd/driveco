@@ -1,69 +1,129 @@
-import Image from "next/image";
+import ApplicationForm from "@/components/application-form";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="site-shell">
+      {/* Header */}
+      <header className="site-header">
+        <div className="container header-inner">
+          <a href="/" className="brand" aria-label="DriveCo home">
+            DriveCo
+          </a>
+
+          <nav className="header-nav" aria-label="Main navigation">
+            <a href="#about" className="nav-link">
+              About DriveCo
+            </a>
+
+            <div className="language-wrapper">
+              <label htmlFor="language" className="sr-only">
+                Select language
+              </label>
+
+              <select
+                id="language"
+                name="language"
+                className="language-select"
+                defaultValue="en"
+                aria-label="Select language"
+              >
+                <option value="en">English</option>
+                <option value="sw">Kiswahili</option>
+                <option value="fr">Français</option>
+                <option value="de">Deutsch</option>
+                <option value="es">Español</option>
+                <option value="ar">العربية</option>
+              </select>
+            </div>
+          </nav>
+        </div>
+      </header>
+
+      {/* Introduction */}
+      <section className="application-intro" id="about">
+        <div className="container content-width">
+          <p className="eyebrow">Driver Applications · Kenya</p>
+
+          <h1>Driver Application</h1>
+
+          <p className="intro-text">
+            DriveCo is accepting applications from qualified Kenyan drivers.
+            Complete the application form below and provide the requested
+            information to be considered for available driving opportunities.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      {/* Application */}
+      <section className="application-area" id="application">
+        <div className="container content-width">
+          <div className="application-heading">
+            <p className="section-label">Application form</p>
+
+            <h2>Complete your application</h2>
+
+            <p className="application-heading-text">
+              Complete each section of the form. Fields marked with an asterisk
+              are required.
+            </p>
+          </div>
+
+          <ApplicationForm />
         </div>
-      </main>
-    </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="site-footer">
+        <div className="container">
+          <div className="footer-main">
+            <div className="footer-brand-area">
+              <a href="/" className="footer-brand" aria-label="DriveCo home">
+                DriveCo
+              </a>
+
+              <p className="footer-description">
+                Driver recruitment opportunities for qualified Kenyan drivers.
+              </p>
+            </div>
+
+            <div className="footer-navigation">
+              <div className="footer-column">
+                <p className="footer-heading">DriveCo</p>
+
+                <a href="#about" className="footer-link">
+                  About DriveCo
+                </a>
+
+                <a href="#application" className="footer-link">
+                  Driver Applications
+                </a>
+              </div>
+
+              <div className="footer-column">
+                <p className="footer-heading">Information</p>
+
+                <a href="#" className="footer-link">
+                  Privacy
+                </a>
+
+                <a href="#" className="footer-link">
+                  Terms
+                </a>
+
+                <a href="#" className="footer-link">
+                  Accessibility
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="footer-bottom">
+            <p>© 2026 DriveCo. All rights reserved.</p>
+
+            <p>Nairobi, Kenya</p>
+          </div>
+        </div>
+      </footer>
+    </main>
   );
 }

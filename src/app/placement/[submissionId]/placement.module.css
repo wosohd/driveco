@@ -1,0 +1,786 @@
+.page {
+  min-height: 100vh;
+
+  background: #faf9f6;
+
+  color: #161616;
+
+  padding: 48px 0 90px;
+}
+
+.container {
+  width: min(
+    100% - 40px,
+    820px
+  );
+
+  margin-inline: auto;
+}
+
+.brand {
+  display: inline-block;
+
+  color: #f26522;
+
+  font-size: 2.6rem;
+  font-weight: 800;
+
+  letter-spacing: -0.07em;
+
+  text-decoration: none;
+
+  transition: color 0.2s ease;
+}
+
+.brand:hover {
+  color: #d94f12;
+}
+
+.brand:focus-visible {
+  outline: 2px solid #f26522;
+
+  outline-offset: 5px;
+}
+
+/* ---------------------------------------
+   Application Confirmation
+--------------------------------------- */
+
+.confirmation {
+  margin-top: 56px;
+
+  padding-bottom: 48px;
+
+  border-bottom:
+    1px solid #deded8;
+}
+
+.eyebrow,
+.serviceEyebrow {
+  margin: 0 0 10px;
+
+  color: #f26522;
+
+  font-size: 0.76rem;
+  font-weight: 700;
+
+  letter-spacing: 0.09em;
+
+  text-transform: uppercase;
+}
+
+.confirmation h1 {
+  max-width: 650px;
+
+  margin: 0;
+
+  font-size:
+    clamp(
+      2rem,
+      5vw,
+      3.2rem
+    );
+
+  font-weight: 650;
+
+  letter-spacing: -0.05em;
+
+  line-height: 1.05;
+}
+
+.reference {
+  margin: 30px 0 4px;
+
+  color: #666662;
+
+  font-size: 0.78rem;
+  font-weight: 600;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.06em;
+}
+
+.referenceValue {
+  font-size:
+    clamp(
+      1.4rem,
+      4vw,
+      2rem
+    );
+
+  overflow-wrap: anywhere;
+}
+
+.freeNotice {
+  margin: 20px 0 0;
+
+  color: #18794e;
+
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ---------------------------------------
+   Placement Service
+--------------------------------------- */
+
+.service {
+  margin-top: 48px;
+}
+
+.serviceHeader {
+  display: flex;
+
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 32px;
+}
+
+.serviceHeader h2 {
+  margin: 0;
+
+  font-size:
+    clamp(
+      1.5rem,
+      4vw,
+      2.1rem
+    );
+
+  letter-spacing: -0.04em;
+}
+
+.price {
+  flex: 0 0 auto;
+
+  display: flex;
+
+  align-items: baseline;
+
+  gap: 5px;
+
+  color: #161616;
+}
+
+.price span {
+  font-size: 0.82rem;
+
+  font-weight: 700;
+}
+
+.price strong {
+  font-size: 2rem;
+
+  color: #f26522;
+}
+
+.description {
+  max-width: 690px;
+
+  margin: 24px 0 0;
+
+  color: #666662;
+
+  font-size: 0.95rem;
+
+  line-height: 1.7;
+}
+
+/* ---------------------------------------
+   Important Disclosure
+--------------------------------------- */
+
+.notice {
+  margin-top: 30px;
+
+  padding: 22px 24px;
+
+  border-left:
+    3px solid #f26522;
+
+  background: #ffffff;
+}
+
+.notice strong {
+  font-size: 0.86rem;
+}
+
+.notice p {
+  margin: 8px 0 0;
+
+  color: #666662;
+
+  font-size: 0.85rem;
+
+  line-height: 1.65;
+}
+
+/* ---------------------------------------
+   Service Consent
+--------------------------------------- */
+
+.consent {
+  margin-top: 30px;
+
+  padding: 20px 0;
+
+  display: grid;
+
+  grid-template-columns:
+    20px 1fr;
+
+  gap: 14px;
+
+  border-top:
+    1px solid #deded8;
+
+  border-bottom:
+    1px solid #deded8;
+
+  color: #666662;
+
+  font-size: 0.84rem;
+
+  line-height: 1.6;
+}
+
+.consent input {
+  margin-top: 3px;
+
+  width: 17px;
+  height: 17px;
+
+  accent-color: #f26522;
+}
+
+.consent input:disabled {
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------
+   Payment Providers
+--------------------------------------- */
+
+.providers {
+  margin-top: 30px;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+  gap: 18px;
+}
+
+.providerButton {
+  min-height: 88px;
+
+  border:
+    1px solid #deded8;
+
+  background: #ffffff;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: flex-start;
+  justify-content: center;
+
+  gap: 5px;
+
+  padding: 18px 20px;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.providerButton span {
+  color: #161616;
+
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.providerButton small {
+  color: #666662;
+
+  font-size: 0.77rem;
+}
+
+.providerButton:hover:not(:disabled) {
+  border-color: #f26522;
+}
+
+.providerButton:focus-visible {
+  outline: 2px solid #f26522;
+
+  outline-offset: 4px;
+}
+
+.providerButton:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
+}
+
+.providerSelected {
+  border-color: #f26522;
+
+  box-shadow:
+    0 0 0 2px
+    rgba(242, 101, 34, 0.08);
+}
+
+/* ---------------------------------------
+   Disabled Mode
+--------------------------------------- */
+
+.disabledMessage {
+  margin-top: 24px;
+
+  padding: 16px 18px;
+
+  background: #f2f0ea;
+
+  color: #666662;
+
+  font-size: 0.8rem;
+
+  line-height: 1.55;
+}
+
+/* ---------------------------------------
+   Mock Mode Notice
+--------------------------------------- */
+
+.mockMessage {
+  margin-top: 24px;
+
+  padding: 18px 20px;
+
+  border:
+    1px dashed #c8c6bf;
+
+  background: #ffffff;
+
+  color: #666662;
+
+  font-size: 0.82rem;
+
+  line-height: 1.6;
+}
+
+.mockMessage strong {
+  color: #161616;
+}
+
+.mockMessage p {
+  margin: 5px 0 0;
+}
+
+/* ---------------------------------------
+   Mock Payment Console
+--------------------------------------- */
+
+.mockConsole {
+  margin-top: 28px;
+
+  padding: 26px;
+
+  border:
+    1px solid #deded8;
+
+  background: #ffffff;
+}
+
+.mockEyebrow {
+  margin: 0 0 8px;
+
+  color: #f26522;
+
+  font-size: 0.72rem;
+  font-weight: 700;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+}
+
+.mockConsole h3 {
+  margin: 0 0 18px;
+
+  font-size: 1.3rem;
+
+  letter-spacing: -0.025em;
+}
+
+.mockConsole p {
+  margin: 7px 0;
+
+  color: #666662;
+
+  font-size: 0.82rem;
+
+  overflow-wrap: anywhere;
+}
+
+.mockActions {
+  margin-top: 22px;
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 10px;
+}
+
+.mockActions button,
+.paymentResult button {
+  min-height: 42px;
+
+  border:
+    1px solid #161616;
+
+  background: transparent;
+
+  color: #161616;
+
+  padding: 0 16px;
+
+  cursor: pointer;
+
+  font-size: 0.78rem;
+  font-weight: 600;
+
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.mockActions button:hover:not(:disabled),
+.paymentResult button:hover:not(:disabled) {
+  border-color: #f26522;
+
+  color: #f26522;
+}
+
+.mockActions button:focus-visible,
+.paymentResult button:focus-visible {
+  outline: 2px solid #f26522;
+
+  outline-offset: 3px;
+}
+
+.mockActions button:disabled,
+.paymentResult button:disabled {
+  cursor: wait;
+
+  opacity: 0.55;
+}
+
+/* ---------------------------------------
+   Payment Error
+--------------------------------------- */
+
+.paymentError {
+  margin: 20px 0 0;
+
+  color: #b42318;
+
+  font-size: 0.82rem;
+  font-weight: 600;
+
+  line-height: 1.55;
+}
+
+/* ---------------------------------------
+   Failed / Cancelled Result
+--------------------------------------- */
+
+.paymentResult {
+  margin-top: 26px;
+
+  padding: 22px;
+
+  background: #ffffff;
+
+  border-left:
+    3px solid #b42318;
+}
+
+.paymentResult strong {
+  color: #161616;
+}
+
+.paymentResult p {
+  margin: 7px 0 18px;
+
+  color: #666662;
+
+  font-size: 0.82rem;
+
+  line-height: 1.6;
+}
+
+/* ---------------------------------------
+   Successful Payment
+--------------------------------------- */
+
+.paymentSuccess {
+  margin-top: 30px;
+
+  padding: 30px;
+
+  background: #ffffff;
+
+  border-left:
+    4px solid #18794e;
+}
+
+.paymentSuccessEyebrow {
+  margin: 0 0 8px;
+
+  color: #18794e;
+
+  font-size: 0.72rem;
+  font-weight: 700;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+}
+
+.paymentSuccess h3 {
+  margin: 0;
+
+  font-size: 1.45rem;
+
+  letter-spacing: -0.03em;
+}
+
+.paymentSuccess > p:not(
+  .paymentSuccessEyebrow
+) {
+  max-width: 610px;
+
+  margin: 14px 0 0;
+
+  color: #666662;
+
+  font-size: 0.86rem;
+
+  line-height: 1.65;
+}
+
+.paymentReference {
+  margin-top: 22px;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  color: #666662;
+
+  font-size: 0.74rem;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.06em;
+}
+
+.paymentReference strong {
+  color: #161616;
+
+  font-size: 0.9rem;
+
+  text-transform: none;
+
+  letter-spacing: normal;
+
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------
+   Actions
+--------------------------------------- */
+
+.actions {
+  margin-top: 32px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 18px;
+}
+
+.secondaryAction {
+  color: #161616;
+
+  font-size: 0.84rem;
+  font-weight: 600;
+
+  text-decoration: none;
+
+  transition: color 0.2s ease;
+}
+
+.secondaryAction:hover {
+  color: #f26522;
+}
+
+.secondaryAction:focus-visible {
+  outline: 2px solid #f26522;
+
+  outline-offset: 4px;
+}
+
+.primaryAction {
+  min-height: 52px;
+
+  border: 0;
+
+  background: #f26522;
+
+  color: #ffffff;
+
+  padding: 0 24px;
+
+  font-size: 0.86rem;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.primaryAction:hover:not(:disabled) {
+  background: #d94f12;
+}
+
+.primaryAction:focus-visible {
+  outline: 2px solid #161616;
+
+  outline-offset: 4px;
+}
+
+.primaryAction:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------
+   Mobile
+--------------------------------------- */
+
+@media (
+  max-width: 600px
+) {
+  .page {
+    padding-top: 32px;
+  }
+
+  .container {
+    width:
+      min(
+        100% - 28px,
+        820px
+      );
+  }
+
+  .brand {
+    font-size: 2.25rem;
+  }
+
+  .confirmation {
+    margin-top: 42px;
+
+    padding-bottom: 40px;
+  }
+
+  .service {
+    margin-top: 40px;
+  }
+
+  .serviceHeader {
+    flex-direction: column;
+
+    gap: 14px;
+  }
+
+  .providers {
+    grid-template-columns:
+      1fr;
+  }
+
+  .mockActions {
+    flex-direction: column;
+  }
+
+  .mockActions button {
+    width: 100%;
+  }
+
+  .actions {
+    flex-direction: column-reverse;
+
+    align-items: stretch;
+  }
+
+  .primaryAction {
+    width: 100%;
+  }
+
+  .secondaryAction {
+    text-align: center;
+
+    padding: 12px;
+  }
+
+  .paymentSuccess {
+    padding: 24px;
+  }
+}
+
+/* ---------------------------------------
+   Reduced Motion
+
+   CSS Module selectors must remain
+   scoped to a local class. The page
+   class provides that local scope.
+--------------------------------------- */
+
+@media (
+  prefers-reduced-motion:
+    reduce
+) {
+  .page,
+  .page *,
+  .page *::before,
+  .page *::after {
+    transition-duration:
+      0.01ms !important;
+
+    animation-duration:
+      0.01ms !important;
+
+    animation-iteration-count:
+      1 !important;
+  }
+}
