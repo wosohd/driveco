@@ -1,3 +1,13 @@
+export const PAYMENT_MODES = [
+  "disabled",
+  "mock",
+  "sandbox",
+  "live",
+] as const;
+
+export type PaymentMode =
+  (typeof PAYMENT_MODES)[number];
+
 export const PAYMENT_PROVIDERS = [
   "mpesa",
   "stripe",

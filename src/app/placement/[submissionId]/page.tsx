@@ -80,8 +80,7 @@ export default async function PlacementPage({
     applicationError
   ) {
     console.error(
-      "Placement application lookup failed:",
-      applicationError.message,
+      "Placement application lookup failed.",
     );
 
     throw new Error(
@@ -127,14 +126,17 @@ export default async function PlacementPage({
     placementError
   ) {
     console.error(
-      "Placement request lookup failed:",
-      placementError.message,
+      "Placement request lookup failed.",
     );
 
     throw new Error(
       "The placement service could not be loaded.",
     );
   }
+
+  const paymentsDisabled =
+    paymentMode ===
+    "disabled";
 
   return (
     <main
@@ -203,98 +205,205 @@ export default async function PlacementPage({
           </p>
         </section>
 
-        <section
-          className={
-            styles.service
-          }
-        >
-          <div
+        {paymentsDisabled ? (
+          <section
             className={
-              styles.serviceHeader
+              styles.service
             }
           >
-            <div>
-              <p
-                className={
-                  styles.serviceEyebrow
-                }
-              >
-                Optional placement service
-              </p>
+            <p
+              className={
+                styles.serviceEyebrow
+              }
+            >
+              Placement services
+            </p>
 
-              <h2>
-                {
-                  PLACEMENT_SERVICE.name
-                }
-              </h2>
+            <h2>
+              Application distribution
+              services are currently
+              in testing.
+            </h2>
+
+            <p
+              className={
+                styles.description
+              }
+            >
+              DriveCo is currently
+              testing its driver
+              placement and application
+              distribution systems.
+              These services are not
+              currently available for
+              purchase through this
+              website.
+            </p>
+
+            <div
+              className={
+                styles.notice
+              }
+            >
+              <strong>
+                No payment required
+              </strong>
+
+              <p>
+                Your driver application
+                has already been
+                received free of
+                charge. Do not send
+                payment to anyone
+                claiming that payment
+                is required to complete
+                this application.
+              </p>
             </div>
 
             <div
               className={
-                styles.price
+                styles.actions
               }
             >
-              <span>
-                KSh
-              </span>
-
-              <strong>
-                {
-                  PLACEMENT_SERVICE.amountKes
+              <Link
+                href="/"
+                className={
+                  styles.secondaryAction
                 }
-              </strong>
+              >
+                Return to DriveCo
+              </Link>
+
+              <div
+                style={{
+                  display:
+                    "flex",
+
+                  gap:
+                    "18px",
+
+                  flexWrap:
+                    "wrap",
+                }}
+              >
+                <Link
+                  href="/privacy"
+                  className={
+                    styles.secondaryAction
+                  }
+                >
+                  Privacy
+                </Link>
+
+                <Link
+                  href="/terms"
+                  className={
+                    styles.secondaryAction
+                  }
+                >
+                  Terms
+                </Link>
+              </div>
             </div>
-          </div>
-
-          <p
+          </section>
+        ) : (
+          <section
             className={
-              styles.description
+              styles.service
             }
           >
-            You may choose
-            DriveCo&apos;s application
-            distribution service to
-            have your driver profile
-            submitted to suitable
-            partner companies
-            currently working with
-            DriveCo.
-          </p>
+            <div
+              className={
+                styles.serviceHeader
+              }
+            >
+              <div>
+                <p
+                  className={
+                    styles.serviceEyebrow
+                  }
+                >
+                  Optional placement
+                  service
+                </p>
 
-          <div
-            className={
-              styles.notice
-            }
-          >
-            <strong>
-              Important
-            </strong>
+                <h2>
+                  {
+                    PLACEMENT_SERVICE.name
+                  }
+                </h2>
+              </div>
 
-            <p>
-              The KSh 200 charge is
-              for DriveCo&apos;s
+              <div
+                className={
+                  styles.price
+                }
+              >
+                <span>
+                  KSh
+                </span>
+
+                <strong>
+                  {
+                    PLACEMENT_SERVICE.amountKes
+                  }
+                </strong>
+              </div>
+            </div>
+
+            <p
+              className={
+                styles.description
+              }
+            >
+              You may choose
+              DriveCo&apos;s
               application distribution
-              service. It is not an
-              application fee and
-              payment does not
-              guarantee an interview,
-              job offer or employment.
+              service to have your
+              driver profile submitted
+              to suitable partner
+              companies currently
+              working with DriveCo.
             </p>
-          </div>
 
-          <PaymentPanel
-            submissionId={
-              normalizedSubmissionId
-            }
-            paymentMode={
-              paymentMode
-            }
-            initialPlacementStatus={
-              placementRequest?.status ??
-              null
-            }
-          />
-        </section>
+            <div
+              className={
+                styles.notice
+              }
+            >
+              <strong>
+                Important
+              </strong>
+
+              <p>
+                The KSh 200 charge is
+                for DriveCo&apos;s
+                application
+                distribution service.
+                It is not an
+                application fee and
+                payment does not
+                guarantee an interview,
+                job offer or
+                employment.
+              </p>
+            </div>
+
+            <PaymentPanel
+              submissionId={
+                normalizedSubmissionId
+              }
+              paymentMode={
+                paymentMode
+              }
+              initialPlacementStatus={
+                placementRequest?.status ??
+                null
+              }
+            />
+          </section>
+        )}
       </div>
     </main>
   );

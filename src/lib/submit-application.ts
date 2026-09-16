@@ -61,6 +61,78 @@ type StatusResponse =
     };
 
 /* ---------------------------------------
+   Turnstile Browser Types
+--------------------------------------- */
+
+type TurnstileRenderOptions = {
+  sitekey: string;
+
+  action?: string;
+
+  theme?:
+    | "auto"
+    | "light"
+    | "dark";
+
+  execution?:
+    | "render"
+    | "execute";
+
+  appearance?:
+    | "always"
+    | "execute"
+    | "interaction-only";
+
+  callback: (
+    token: string,
+  ) => void;
+
+  "error-callback"?: (
+    errorCode?: string,
+  ) => void;
+
+  "expired-callback"?: () => void;
+
+  "timeout-callback"?: () => void;
+};
+
+type TurnstileApi = {
+  render: (
+    container:
+      HTMLElement,
+
+    options:
+      TurnstileRenderOptions,
+  ) => string;
+
+  execute: (
+    widgetId:
+      string,
+  ) => void;
+
+  remove: (
+    widgetId:
+      string,
+  ) => void;
+};
+
+declare global {
+  interface Window {
+    turnstile?:
+      TurnstileApi;
+
+    __drivecoTurnstileScriptPromise?:
+      Promise<void>;
+  }
+}
+
+const TURNSTILE_SCRIPT_URL =
+  "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+
+const TURNSTILE_ACTION =
+  "driver_application";
+
+/* ---------------------------------------
    File Helper
 --------------------------------------- */
 
@@ -80,6 +152,353 @@ function getFirstFile(
 }
 
 /* ---------------------------------------
+   Turnstile Script Loader
+--------------------------------------- */
+
+function loadTurnstileScript():
+  Promise<void> {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
+    return Promise.reject(
+      new Error(
+        "Security verification is not available.",
+      ),
+    );
+  }
+
+  if (
+    window.turnstile
+  ) {
+    return Promise.resolve();
+  }
+
+  if (
+    window
+      .__drivecoTurnstileScriptPromise
+  ) {
+    return window
+      .__drivecoTurnstileScriptPromise;
+  }
+
+  window.__drivecoTurnstileScriptPromise =
+    new Promise<void>(
+      (
+        resolve,
+        reject,
+      ) => {
+        const existingScript =
+          document.querySelector<HTMLScriptElement>(
+            'script[data-driveco-turnstile="true"]',
+          );
+
+        const finishLoad =
+          () => {
+            if (
+              window.turnstile
+            ) {
+              resolve();
+
+              return;
+            }
+
+            reject(
+              new Error(
+                "Security verification could not be loaded.",
+              ),
+            );
+          };
+
+        if (
+          existingScript
+        ) {
+          existingScript.addEventListener(
+            "load",
+            finishLoad,
+            {
+              once: true,
+            },
+          );
+
+          existingScript.addEventListener(
+            "error",
+            () => {
+              reject(
+                new Error(
+                  "Security verification could not be loaded.",
+                ),
+              );
+            },
+            {
+              once: true,
+            },
+          );
+
+          return;
+        }
+
+        const script =
+          document.createElement(
+            "script",
+          );
+
+        script.src =
+          TURNSTILE_SCRIPT_URL;
+
+        script.async =
+          true;
+
+        script.defer =
+          true;
+
+        script.dataset.drivecoTurnstile =
+          "true";
+
+        script.addEventListener(
+          "load",
+          finishLoad,
+          {
+            once: true,
+          },
+        );
+
+        script.addEventListener(
+          "error",
+          () => {
+            reject(
+              new Error(
+                "Security verification could not be loaded.",
+              ),
+            );
+          },
+          {
+            once: true,
+          },
+        );
+
+        document.head.appendChild(
+          script,
+        );
+      },
+    );
+
+  return window
+    .__drivecoTurnstileScriptPromise;
+}
+
+/* ---------------------------------------
+   Generate Fresh Turnstile Token
+--------------------------------------- */
+
+async function getTurnstileToken():
+  Promise<string> {
+  const siteKey =
+    process.env
+      .NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+  if (!siteKey) {
+    throw new Error(
+      "Security verification is not configured.",
+    );
+  }
+
+  await loadTurnstileScript();
+
+  const turnstile =
+    window.turnstile;
+
+  if (!turnstile) {
+    throw new Error(
+      "Security verification could not be initialized.",
+    );
+  }
+
+  const container =
+    document.createElement(
+      "div",
+    );
+
+  /*
+   * The widget remains invisible for
+   * most legitimate users.
+   *
+   * If Cloudflare requires interaction,
+   * the challenge can appear in the
+   * lower-right corner.
+   */
+
+  container.style.position =
+    "fixed";
+
+  container.style.right =
+    "16px";
+
+  container.style.bottom =
+    "16px";
+
+  container.style.zIndex =
+    "2147483647";
+
+  container.style.maxWidth =
+    "calc(100vw - 32px)";
+
+  document.body.appendChild(
+    container,
+  );
+
+  return new Promise<string>(
+    (
+      resolve,
+      reject,
+    ) => {
+      let widgetId:
+        string | null =
+          null;
+
+      let settled =
+        false;
+
+      const timeout =
+        window.setTimeout(
+          () => {
+            fail(
+              "Security verification timed out. Please try again.",
+            );
+          },
+          120_000,
+        );
+
+      function cleanup() {
+        window.clearTimeout(
+          timeout,
+        );
+
+        if (
+          widgetId &&
+          window.turnstile
+        ) {
+          try {
+            window.turnstile.remove(
+              widgetId,
+            );
+          } catch {
+            /*
+             * Cleanup failure should
+             * never affect submission.
+             */
+          }
+        }
+
+        container.remove();
+      }
+
+      function succeed(
+        token: string,
+      ) {
+        if (settled) {
+          return;
+        }
+
+        settled =
+          true;
+
+        cleanup();
+
+        resolve(token);
+      }
+
+      function fail(
+        message: string,
+      ) {
+        if (settled) {
+          return;
+        }
+
+        settled =
+          true;
+
+        cleanup();
+
+        reject(
+          new Error(
+            message,
+          ),
+        );
+      }
+
+      try {
+        widgetId =
+          turnstile.render(
+            container,
+            {
+              sitekey:
+                siteKey,
+
+              action:
+                TURNSTILE_ACTION,
+
+              theme:
+                "auto",
+
+              execution:
+                "execute",
+
+              appearance:
+                "interaction-only",
+
+              callback: (
+                token,
+              ) => {
+                if (!token) {
+                  fail(
+                    "Security verification failed. Please try again.",
+                  );
+
+                  return;
+                }
+
+                succeed(
+                  token,
+                );
+              },
+
+              "error-callback":
+                () => {
+                  fail(
+                    "Security verification failed. Please try again.",
+                  );
+                },
+
+              "expired-callback":
+                () => {
+                  fail(
+                    "Security verification expired. Please try again.",
+                  );
+                },
+
+              "timeout-callback":
+                () => {
+                  fail(
+                    "Security verification timed out. Please try again.",
+                  );
+                },
+            },
+          );
+
+        turnstile.execute(
+          widgetId,
+        );
+      } catch {
+        fail(
+          "Security verification could not be started.",
+        );
+      }
+    },
+  );
+}
+
+/* ---------------------------------------
    Successful Submission Navigation
 --------------------------------------- */
 
@@ -90,13 +509,6 @@ function completeApplicationSubmission(
   submissionId:
     string,
 ) {
-  /*
-   * Once the free driver application
-   * has been successfully stored,
-   * continue to the separate optional
-   * placement-service page.
-   */
-
   window.location.assign(
     `/placement/${encodeURIComponent(
       submissionId,
@@ -308,16 +720,6 @@ export async function submitApplication(
             ),
       ]);
   } catch (error) {
-    /*
-     * The browser may believe an
-     * operation failed even though
-     * the original submission
-     * completed on the server.
-     *
-     * Check before displaying an
-     * error to the applicant.
-     */
-
     try {
       const recovered =
         await findExistingApplication(
@@ -332,13 +734,20 @@ export async function submitApplication(
       }
     } catch {
       /*
-       * Preserve the original upload
-       * error below.
+       * Preserve the original
+       * upload error.
        */
     }
 
     throw error;
   }
+
+  /* ---------------------------------------
+     Human Verification
+  --------------------------------------- */
+
+  const turnstileToken =
+    await getTurnstileToken();
 
   /* ---------------------------------------
      Save Application
@@ -362,6 +771,9 @@ export async function submitApplication(
           headers: {
             "Content-Type":
               "application/json",
+
+            "X-Turnstile-Token":
+              turnstileToken,
           },
 
           body:
@@ -435,12 +847,6 @@ export async function submitApplication(
         },
       );
   } catch (error) {
-    /*
-     * The HTTP connection may fail
-     * after the server has already
-     * committed the application.
-     */
-
     try {
       const recovered =
         await findExistingApplication(
@@ -477,13 +883,6 @@ export async function submitApplication(
         | SuccessfulApplicationResponse
         | FailedApplicationResponse;
   } catch {
-    /*
-     * If the response was lost or
-     * malformed, check whether the
-     * database operation actually
-     * succeeded.
-     */
-
     const recovered =
       await findExistingApplication(
         submissionId,
@@ -509,13 +908,6 @@ export async function submitApplication(
     !response.ok ||
     !result.ok
   ) {
-    /*
-     * Again check for the narrow case
-     * where the database committed but
-     * the response received by the
-     * browser was unsuccessful.
-     */
-
     const recovered =
       await findExistingApplication(
         submissionId,

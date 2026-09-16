@@ -11,9 +11,19 @@ import {
 } from "@/lib/payments/schemas";
 
 import {
+  externalPaymentsEnabled,
   paymentMode,
   PLACEMENT_SERVICE,
 } from "@/lib/payments/config";
+
+import {
+  initiateMpesaStkPush,
+} from "@/lib/payments/providers/mpesa";
+
+import {
+  createStripeCheckout,
+  getStripeClient,
+} from "@/lib/payments/providers/stripe";
 
 import {
   supabaseAdmin,
@@ -53,6 +63,34 @@ function isSameOrigin(
   }
 }
 
+async function returnPlacementToOffered(
+  placementRequestId:
+    string,
+) {
+  await supabaseAdmin
+    .from(
+      "placement_requests",
+    )
+    .update({
+      status:
+        "offered",
+    })
+    .eq(
+      "id",
+      placementRequestId,
+    );
+}
+
+function providerLabel(
+  provider:
+    string,
+) {
+  return provider ===
+    "mpesa"
+    ? "M-Pesa"
+    : "Stripe";
+}
+
 export async function POST(
   request: Request,
 ) {
@@ -75,10 +113,6 @@ export async function POST(
       );
     }
 
-    /* ---------------------------------------
-       Payment Mode Guard
-    --------------------------------------- */
-
     if (
       paymentMode ===
       "disabled"
@@ -98,36 +132,6 @@ export async function POST(
         },
       );
     }
-
-    /*
-     * Real providers are intentionally
-     * unavailable until commercial
-     * activation.
-     */
-
-    if (
-      paymentMode ===
-      "live"
-    ) {
-      return NextResponse.json(
-        {
-          ok: false,
-
-          code:
-            "LIVE_PAYMENTS_NOT_CONFIGURED",
-
-          message:
-            "Live payment processing has not yet been activated.",
-        },
-        {
-          status: 501,
-        },
-      );
-    }
-
-    /* ---------------------------------------
-       Parse Request
-    --------------------------------------- */
 
     let body: unknown;
 
@@ -177,15 +181,37 @@ export async function POST(
     const {
       submissionId,
       provider,
+      phoneNumber,
     } =
       validation.data;
 
-    /* ---------------------------------------
-       Find Submitted Application
-    --------------------------------------- */
+    if (
+      externalPaymentsEnabled &&
+      provider ===
+        "mpesa" &&
+      !phoneNumber
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+
+          message:
+            "Enter the M-Pesa phone number that should receive the payment prompt.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    /* -----------------------------------
+       Application
+    ----------------------------------- */
 
     const {
-      data: application,
+      data:
+        application,
+
       error:
         applicationError,
     } =
@@ -197,6 +223,7 @@ export async function POST(
           `
             id,
             application_reference,
+            email,
             status
           `,
         )
@@ -210,8 +237,7 @@ export async function POST(
       applicationError
     ) {
       console.error(
-        "Payment application lookup failed:",
-        applicationError.message,
+        "Payment application lookup failed.",
       );
 
       return NextResponse.json(
@@ -227,9 +253,7 @@ export async function POST(
       );
     }
 
-    if (
-      !application
-    ) {
+    if (!application) {
       return NextResponse.json(
         {
           ok: false,
@@ -243,9 +267,9 @@ export async function POST(
       );
     }
 
-    /* ---------------------------------------
-       Find Existing Placement Request
-    --------------------------------------- */
+    /* -----------------------------------
+       Placement Request
+    ----------------------------------- */
 
     const {
       data:
@@ -275,8 +299,7 @@ export async function POST(
       placementLookupError
     ) {
       console.error(
-        "Placement lookup failed:",
-        placementLookupError.message,
+        "Placement lookup failed.",
       );
 
       return NextResponse.json(
@@ -291,10 +314,6 @@ export async function POST(
         },
       );
     }
-
-    /* ---------------------------------------
-       Already Paid / Distributed
-    --------------------------------------- */
 
     if (
       existingPlacement &&
@@ -322,19 +341,15 @@ export async function POST(
       });
     }
 
-    /* ---------------------------------------
-       Create / Update Placement Request
-    --------------------------------------- */
-
     const consentTime =
-      new Date().toISOString();
+      new Date()
+        .toISOString();
 
     let placementRequest:
-      | {
-          id: string;
-          status: string;
-        }
-      | null = null;
+      {
+        id: string;
+        status: string;
+      };
 
     if (
       existingPlacement
@@ -374,8 +389,7 @@ export async function POST(
         !data
       ) {
         console.error(
-          "Placement request update failed:",
-          error?.message,
+          "Placement request update failed.",
         );
 
         return NextResponse.json(
@@ -437,8 +451,7 @@ export async function POST(
         !data
       ) {
         console.error(
-          "Placement request creation failed:",
-          error?.message,
+          "Placement request creation failed.",
         );
 
         return NextResponse.json(
@@ -458,16 +471,16 @@ export async function POST(
         data;
     }
 
-    /* ---------------------------------------
-       Reuse Pending Provider Attempt
-    --------------------------------------- */
+    /* -----------------------------------
+       ANY Existing Active Attempt
+    ----------------------------------- */
 
     const {
       data:
-        pendingPayments,
+        activeAttempts,
 
       error:
-        pendingLookupError,
+        activeLookupError,
     } =
       await supabaseAdmin
         .from(
@@ -479,6 +492,7 @@ export async function POST(
             provider,
             status,
             provider_reference,
+            provider_checkout_id,
             initiated_at
           `,
         )
@@ -486,22 +500,27 @@ export async function POST(
           "placement_request_id",
           placementRequest.id,
         )
-        .eq(
-          "provider",
-          provider,
-        )
-        .eq(
+        .in(
           "status",
-          "pending",
+          [
+            "created",
+            "pending",
+          ],
+        )
+        .order(
+          "created_at",
+          {
+            ascending:
+              false,
+          },
         )
         .limit(1);
 
     if (
-      pendingLookupError
+      activeLookupError
     ) {
       console.error(
-        "Pending payment lookup failed:",
-        pendingLookupError.message,
+        "Active payment lookup failed.",
       );
 
       return NextResponse.json(
@@ -517,56 +536,345 @@ export async function POST(
       );
     }
 
-    const pendingPayment =
-      pendingPayments?.[0];
+    const activePayment =
+      activeAttempts?.[0];
+
+    /* -----------------------------------
+       Different Provider Already Active
+    ----------------------------------- */
 
     if (
-      pendingPayment
+      activePayment &&
+      activePayment.provider !==
+        provider
     ) {
-      return NextResponse.json({
-        ok: true,
+      return NextResponse.json(
+        {
+          ok: false,
 
-        mode:
-          "mock",
+          code:
+            "PAYMENT_ALREADY_PENDING",
 
-        placement: {
-          id:
-            placementRequest.id,
+          activeProvider:
+            activePayment.provider,
 
-          status:
-            placementRequest.status,
+          message:
+            `A ${providerLabel(
+              activePayment.provider,
+            )} payment is already awaiting completion. Complete or resolve that payment before starting another payment method.`,
         },
-
-        payment: {
-          id:
-            pendingPayment.id,
-
-          provider:
-            pendingPayment.provider,
-
-          status:
-            pendingPayment.status,
-
-          reference:
-            pendingPayment.provider_reference,
-
-          initiatedAt:
-            pendingPayment.initiated_at,
+        {
+          status: 409,
         },
-      });
+      );
     }
 
-    /* ---------------------------------------
-       Create Mock Payment Attempt
-    --------------------------------------- */
+    /* -----------------------------------
+       Reuse Same Active Attempt
+    ----------------------------------- */
 
-    const providerReference =
-      `MOCK-${provider.toUpperCase()}-${randomUUID()}`;
+    if (
+      activePayment
+    ) {
+      if (
+        paymentMode ===
+        "mock"
+      ) {
+        return NextResponse.json({
+          ok: true,
+
+          reused:
+            true,
+
+          mode:
+            paymentMode,
+
+          placement: {
+            id:
+              placementRequest.id,
+
+            status:
+              placementRequest.status,
+          },
+
+          payment: {
+            id:
+              activePayment.id,
+
+            provider:
+              activePayment.provider,
+
+            status:
+              activePayment.status,
+
+            reference:
+              activePayment.provider_reference,
+
+            initiatedAt:
+              activePayment.initiated_at,
+          },
+        });
+      }
+
+      if (
+        provider ===
+          "stripe" &&
+        activePayment
+          .provider_checkout_id
+      ) {
+        try {
+          const stripe =
+            getStripeClient();
+
+          const session =
+            await stripe
+              .checkout
+              .sessions
+              .retrieve(
+                activePayment
+                  .provider_checkout_id,
+              );
+
+          if (
+            session.status ===
+              "open" &&
+            session.url
+          ) {
+            return NextResponse.json({
+              ok: true,
+
+              reused:
+                true,
+
+              mode:
+                paymentMode,
+
+              placement: {
+                id:
+                  placementRequest.id,
+
+                status:
+                  placementRequest.status,
+              },
+
+              payment: {
+                id:
+                  activePayment.id,
+
+                provider:
+                  "stripe",
+
+                status:
+                  activePayment.status,
+
+                reference:
+                  activePayment.provider_reference,
+              },
+
+              stripe: {
+                checkoutUrl:
+                  session.url,
+              },
+            });
+          }
+        } catch {
+          console.error(
+            "Existing Stripe Checkout lookup failed.",
+          );
+        }
+      }
+
+      if (
+        provider ===
+          "mpesa" &&
+        activePayment
+          .provider_checkout_id
+      ) {
+        return NextResponse.json({
+          ok: true,
+
+          reused:
+            true,
+
+          mode:
+            paymentMode,
+
+          placement: {
+            id:
+              placementRequest.id,
+
+            status:
+              placementRequest.status,
+          },
+
+          payment: {
+            id:
+              activePayment.id,
+
+            provider:
+              "mpesa",
+
+            status:
+              activePayment.status,
+
+            reference:
+              activePayment.provider_reference,
+          },
+
+          mpesa: {
+            message:
+              "An M-Pesa payment request is already awaiting confirmation.",
+          },
+        });
+      }
+
+      return NextResponse.json(
+        {
+          ok: false,
+
+          code:
+            "PAYMENT_ALREADY_PENDING",
+
+          activeProvider:
+            activePayment.provider,
+
+          message:
+            "A payment attempt is already awaiting completion.",
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
+    /* -----------------------------------
+       MOCK
+    ----------------------------------- */
+
+    if (
+      paymentMode ===
+      "mock"
+    ) {
+      const providerReference =
+        `MOCK-${provider.toUpperCase()}-${randomUUID()}`;
+
+      const {
+        data:
+          payment,
+
+        error:
+          paymentError,
+      } =
+        await supabaseAdmin
+          .from(
+            "payments",
+          )
+          .insert({
+            placement_request_id:
+              placementRequest.id,
+
+            provider,
+
+            amount_kes:
+              PLACEMENT_SERVICE.amountKes,
+
+            currency:
+              PLACEMENT_SERVICE.currency,
+
+            status:
+              "pending",
+
+            idempotency_key:
+              randomUUID(),
+
+            provider_reference:
+              providerReference,
+          })
+          .select(
+            `
+              id,
+              provider,
+              status,
+              provider_reference,
+              initiated_at
+            `,
+          )
+          .single();
+
+      if (
+        paymentError ||
+        !payment
+      ) {
+        console.error(
+          "Mock payment creation failed.",
+        );
+
+        return NextResponse.json(
+          {
+            ok: false,
+
+            message:
+              "The payment attempt could not be created.",
+          },
+          {
+            status:
+              paymentError
+                ?.code ===
+              "23505"
+                ? 409
+                : 500,
+          },
+        );
+      }
+
+      return NextResponse.json(
+        {
+          ok: true,
+
+          mode:
+            "mock",
+
+          placement: {
+            id:
+              placementRequest.id,
+
+            status:
+              placementRequest.status,
+          },
+
+          payment: {
+            id:
+              payment.id,
+
+            provider:
+              payment.provider,
+
+            status:
+              payment.status,
+
+            reference:
+              payment.provider_reference,
+
+            initiatedAt:
+              payment.initiated_at,
+          },
+        },
+        {
+          status: 201,
+        },
+      );
+    }
+
+    /* -----------------------------------
+       External Payment Record
+    ----------------------------------- */
 
     const {
-      data: payment,
+      data:
+        payment,
+
       error:
-        paymentError,
+        paymentCreateError,
     } =
       await supabaseAdmin
         .from(
@@ -585,29 +893,383 @@ export async function POST(
             PLACEMENT_SERVICE.currency,
 
           status:
-            "pending",
+            "created",
 
-          provider_reference:
-            providerReference,
+          idempotency_key:
+            randomUUID(),
         })
         .select(
           `
             id,
             provider,
-            status,
-            provider_reference,
-            initiated_at
+            status
           `,
         )
         .single();
 
     if (
-      paymentError ||
+      paymentCreateError ||
       !payment
     ) {
       console.error(
-        "Mock payment creation failed:",
-        paymentError?.message,
+        "Payment record creation failed.",
+      );
+
+      return NextResponse.json(
+        {
+          ok: false,
+
+          code:
+            paymentCreateError
+              ?.code ===
+              "23505"
+              ? "PAYMENT_ALREADY_PENDING"
+              : "PAYMENT_CREATE_FAILED",
+
+          message:
+            paymentCreateError
+              ?.code ===
+              "23505"
+              ? "Another payment attempt is already awaiting completion."
+              : "The payment attempt could not be created.",
+        },
+        {
+          status:
+            paymentCreateError
+              ?.code ===
+              "23505"
+              ? 409
+              : 500,
+        },
+      );
+    }
+
+    /* -----------------------------------
+       M-PESA
+    ----------------------------------- */
+
+    if (
+      provider ===
+      "mpesa"
+    ) {
+      try {
+        const result =
+          await initiateMpesaStkPush({
+            phoneNumber:
+              phoneNumber!,
+
+            amountKes:
+              PLACEMENT_SERVICE.amountKes,
+
+            accountReference:
+              application.application_reference,
+
+            description:
+              "DriveCo placement",
+          });
+
+        if (
+          !result.accepted ||
+          !result.checkoutRequestId
+        ) {
+          await supabaseAdmin
+            .from(
+              "payments",
+            )
+            .update({
+              status:
+                "failed",
+
+              failure_code:
+                "MPESA_REJECTED",
+
+              failure_message:
+                "M-Pesa rejected the payment initiation request.",
+
+              failed_at:
+                new Date()
+                  .toISOString(),
+            })
+            .eq(
+              "id",
+              payment.id,
+            );
+
+          await returnPlacementToOffered(
+            placementRequest.id,
+          );
+
+          return NextResponse.json(
+            {
+              ok: false,
+
+              message:
+                "M-Pesa could not start the payment. Please try again.",
+            },
+            {
+              status: 502,
+            },
+          );
+        }
+
+        const {
+          error:
+            paymentUpdateError,
+        } =
+          await supabaseAdmin
+            .from(
+              "payments",
+            )
+            .update({
+              status:
+                "pending",
+
+              provider_checkout_id:
+                result.checkoutRequestId,
+
+              provider_reference:
+                result.merchantRequestId,
+            })
+            .eq(
+              "id",
+              payment.id,
+            );
+
+        if (
+          paymentUpdateError
+        ) {
+          console.error(
+            "M-Pesa payment reconciliation setup failed.",
+          );
+
+          return NextResponse.json(
+            {
+              ok: false,
+
+              message:
+                "The M-Pesa request was created but DriveCo could not prepare payment tracking.",
+            },
+            {
+              status: 500,
+            },
+          );
+        }
+
+        return NextResponse.json(
+          {
+            ok: true,
+
+            mode:
+              paymentMode,
+
+            placement: {
+              id:
+                placementRequest.id,
+
+              status:
+                "payment_pending",
+            },
+
+            payment: {
+              id:
+                payment.id,
+
+              provider:
+                "mpesa",
+
+              status:
+                "pending",
+
+              reference:
+                result.merchantRequestId,
+            },
+
+            mpesa: {
+              message:
+                result.message,
+            },
+          },
+          {
+            status: 201,
+          },
+        );
+      } catch {
+        console.error(
+          "M-Pesa initiation failed.",
+        );
+
+        await supabaseAdmin
+          .from(
+            "payments",
+          )
+          .update({
+            status:
+              "failed",
+
+            failure_code:
+              "MPESA_INITIATION_FAILED",
+
+            failure_message:
+              "M-Pesa payment initiation failed.",
+
+            failed_at:
+              new Date()
+                .toISOString(),
+          })
+          .eq(
+            "id",
+            payment.id,
+          );
+
+        await returnPlacementToOffered(
+          placementRequest.id,
+        );
+
+        return NextResponse.json(
+          {
+            ok: false,
+
+            message:
+              "The M-Pesa payment could not be started.",
+          },
+          {
+            status: 502,
+          },
+        );
+      }
+    }
+
+    /* -----------------------------------
+       STRIPE
+    ----------------------------------- */
+
+    try {
+      const checkout =
+        await createStripeCheckout({
+          paymentId:
+            payment.id,
+
+          placementRequestId:
+            placementRequest.id,
+
+          submissionId,
+
+          applicationReference:
+            application.application_reference,
+
+          customerEmail:
+            application.email ??
+            null,
+        });
+
+      const {
+        error:
+          paymentUpdateError,
+      } =
+        await supabaseAdmin
+          .from(
+            "payments",
+          )
+          .update({
+            status:
+              "pending",
+
+            provider_checkout_id:
+              checkout.sessionId,
+          })
+          .eq(
+            "id",
+            payment.id,
+          );
+
+      if (
+        paymentUpdateError
+      ) {
+        console.error(
+          "Stripe payment reconciliation setup failed.",
+        );
+
+        return NextResponse.json(
+          {
+            ok: false,
+
+            message:
+              "Stripe Checkout was created but DriveCo could not prepare payment tracking.",
+          },
+          {
+            status: 500,
+          },
+        );
+      }
+
+      return NextResponse.json(
+        {
+          ok: true,
+
+          mode:
+            paymentMode,
+
+          placement: {
+            id:
+              placementRequest.id,
+
+            status:
+              "payment_pending",
+          },
+
+          payment: {
+            id:
+              payment.id,
+
+            provider:
+              "stripe",
+
+            status:
+              "pending",
+
+            reference:
+              null,
+          },
+
+          stripe: {
+            checkoutUrl:
+              checkout.checkoutUrl,
+          },
+        },
+        {
+          status: 201,
+        },
+      );
+    } catch {
+      console.error(
+        "Stripe Checkout initiation failed.",
+      );
+
+      await supabaseAdmin
+        .from(
+          "payments",
+        )
+        .update({
+          status:
+            "failed",
+
+          failure_code:
+            "STRIPE_INITIATION_FAILED",
+
+          failure_message:
+            "Stripe Checkout initiation failed.",
+
+          failed_at:
+            new Date()
+              .toISOString(),
+        })
+        .eq(
+          "id",
+          payment.id,
+        );
+
+      await returnPlacementToOffered(
+        placementRequest.id,
       );
 
       return NextResponse.json(
@@ -615,56 +1277,16 @@ export async function POST(
           ok: false,
 
           message:
-            "The payment attempt could not be created.",
+            "Stripe Checkout could not be started.",
         },
         {
-          status: 500,
+          status: 502,
         },
       );
     }
-
-    return NextResponse.json(
-      {
-        ok: true,
-
-        mode:
-          "mock",
-
-        placement: {
-          id:
-            placementRequest.id,
-
-          status:
-            placementRequest.status,
-        },
-
-        payment: {
-          id:
-            payment.id,
-
-          provider:
-            payment.provider,
-
-          status:
-            payment.status,
-
-          reference:
-            payment.provider_reference,
-
-          initiatedAt:
-            payment.initiated_at,
-        },
-      },
-      {
-        status: 201,
-      },
-    );
-  } catch (error) {
+  } catch {
     console.error(
-      "Unexpected payment initiation error:",
-      error instanceof Error
-        ? error.message
-        : "Unknown error",
+      "Unexpected payment initiation error.",
     );
 
     return NextResponse.json(
